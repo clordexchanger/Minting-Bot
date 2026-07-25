@@ -15,6 +15,7 @@ async function main() {
     { command: "mint", description: "Fire a mint for a target" },
     { command: "fanoutmint", description: "Fire a mint from multiple wallets at once" },
     { command: "checkchains", description: "Verify RPC connectivity for every configured chain" },
+    { command: "cancel", description: "Cancel a guided walk-through in progress" },
     { command: "dryrun", description: "Validate a mint without sending it" },
     { command: "setsweep", description: "Set a wallet's fast wallet-out destination" },
     { command: "sweep", description: "Manually sweep native balance or a token out" },
