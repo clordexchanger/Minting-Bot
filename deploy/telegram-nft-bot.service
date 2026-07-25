@@ -1,0 +1,23 @@
+[Unit]
+Description=Telegram NFT Mint Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust these two paths if you didn't use /opt/telegram-nft-bot or the
+# default 'node' user — everything else can stay as-is.
+WorkingDirectory=/opt/telegram-nft-bot
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+User=node
+Environment=NODE_ENV=production
+
+# Keeps stdout/stderr in the systemd journal — view with:
+#   journalctl -u telegram-nft-bot -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
