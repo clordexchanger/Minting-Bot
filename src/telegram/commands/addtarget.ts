@@ -13,10 +13,10 @@ const COMMON_CHAINS: Array<[string, number]> = [
 ];
 
 export function registerAddTarget(bot: Bot): void {
-  // ---- Fast path: the original one-line pipe|JSON syntax, unchanged. ----
+  // ---- Fast path: the original one-line pipe|JSON syntax, unchanged. ----      
   bot.command("addtarget", async (ctx, next) => {
     const raw = ctx.match?.toString().trim();
-    if (!raw) return next(); // no args — hand off to the guided wizard below
+    if (!raw) return next(); // no args — hand off to the guided wizard below     
 
     const parts = raw.split("|").map((p) => p.trim());
     const [label, chainRaw, address, mintSpec, chainIdRaw, priceNote, wallet] = parts;
@@ -26,7 +26,7 @@ export function registerAddTarget(bot: Bot): void {
       return;
     }
     if (chainRaw !== "evm" && chainRaw !== "solana") {
-      await ctx.reply(`Invalid chain "${chainRaw}". Must be "evm" or "solana".`);
+      await ctx.reply(`Invalid chain "${chainRaw}". Must be "evm" or "solana".`); 
       return;
     }
     const chain = chainRaw as Chain;
@@ -46,14 +46,14 @@ export function registerAddTarget(bot: Bot): void {
     });
 
     await ctx.reply(
-      `Target added: *${target.label}* (${target.id})\nChain: ${target.chain}${
+      `Target added: *${target.label}* (${target.id})\nChain: ${target.chain}${   
         target.chainId ? " / chainId " + target.chainId : ""
       }\nAddress: \`${target.address}\``,
       { parse_mode: "Markdown" }
     );
   });
 
-  // ---- Guided wizard: /addtarget with no arguments. EVM only — solana's
+  // ---- Guided wizard: /addtarget with no arguments. EVM only — solana's        
   // mintSpec is too free-form (raw instruction bytes + accounts) to
   // meaningfully walk through with yes/no questions. ----
   bot.command("addtarget", async (ctx) => {
@@ -70,8 +70,16 @@ export function registerAddTarget(bot: Bot): void {
   bot.on("message:text", async (ctx, next) => {
     const wizard = getWizard(ctx.chat.id);
     if (!wizard || wizard.kind !== "addtarget") return next();
-    const data = wizard.data;
     const text = ctx.message.text.trim();
+
+    // Any real command (including /cancel) should escape the wizard rather       
+    // than being swallowed as if it were an answer to the current question.      
+    if (text.startsWith("/")) {
+      clearWizard(ctx.chat.id);
+      return next();
+    }
+
+    const data = wizard.data;
 
     switch (wizard.step) {
       case 0: {
@@ -112,7 +120,7 @@ export function registerAddTarget(bot: Bot): void {
       case 4: {
         const qty = Number(text);
         if (!Number.isInteger(qty) || qty <= 0) {
-          await ctx.reply("Enter a whole number greater than 0, or /cancel.");
+          await ctx.reply("Enter a whole number greater than 0, or /cancel.");    
           return;
         }
         data.qty = qty;
@@ -227,7 +235,7 @@ async function askWalletQuestion(ctx: Context): Promise<void> {
     if (i % 2 === 1) kb.row();
   });
   kb.row().text("None / set later", "wiz_wallet_none");
-  await ctx.reply("Default wallet for this target?", { reply_markup: kb });
+  await ctx.reply("Default wallet for this target?", { reply_markup: kb });       
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,13 +246,13 @@ async function finalizeAddTarget(ctx: Context, data: Record<string, any>): Promi
   }
 
   const functionAbi = data.hasQty
-    ? `function mint(uint256 quantity) ${data.payable ? "payable" : ""}`.trim()
+    ? `function mint(uint256 quantity) ${data.payable ? "payable" : ""}`.trim()   
     : `function mint() ${data.payable ? "payable" : ""}`.trim();
 
   const mintSpec = JSON.stringify({
     functionAbi,
     args: data.hasQty ? [data.qty ?? 1] : [],
-    ...(data.payable && data.priceEth ? { valueEth: data.priceEth } : {}),
+    ...(data.payable && data.priceEth ? { valueEth: data.priceEth } : {}),        
   });
 
   const target = addTarget({
