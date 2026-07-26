@@ -68,6 +68,7 @@ Fast wallet-out:
 - `/setsweep main 0xYourColdWallet` — evm mints from `main` now auto-sweep to this address once confirmed.
 - `/sweep main native 8453 0xYourColdWallet` — manually sweep remaining ETH-family balance.
 - `/sweep main spl <mintAddress> 1 <destinationWallet>` — manually sweep an SPL/NFT token on Solana.
+- `/setsweep soltest YourColdSolanaWallet` then `/watchwallet soltest` — solana: continuously watches the wallet and auto-sweeps anything that arrives (SOL, any SPL token, any NFT), not tied to a bot-triggered mint the way evm's auto-sweep is.
 
 Triggers:
 - `/schedule testdrop main 2026-08-01T14:00:00Z` — fires the mint automatically at that UTC time, even across a bot restart in between.
@@ -110,7 +111,7 @@ None of this is something I can do for you — funding wallets and pointing at a
 - Targets are stored in `data/targets.json`, schedules in `data/schedules.json`, both plain JSON, no secrets in either.
 - `EVM_RPC_URLS` is keyed by chainId, so a mint/sweep/watch on a target automatically uses the RPC(s) configured for that target's `chainId`. A target whose chain has no entry in `EVM_RPC_URLS` fails with a clear error naming the missing chainId, rather than silently trying the wrong network.
 - Wallet keys are encrypted at rest in `data/keystore.enc.json`. `/wallets` only ever shows label, chain, address, sweep destination, and balance, never key material. Nothing in the Telegram surface can accept or display a private key.
-- Auto-sweep only covers evm right now — it reads the mint's Transfer event out of the receipt logs to find the tokenId, then fires `safeTransferFrom` to the configured `sweepTo`. Solana auto-sweep isn't wired up (finding the newly-created token account generically is harder); use `/sweep spl` manually there.
+- Auto-sweep works differently per chain: evm auto-sweeps the specific NFT right after a bot-triggered mint confirms (reads the tokenId out of the receipt's Transfer event). Solana instead uses `/watchwallet` — a standing watch on the wallet itself that sweeps anything that shows up (SOL, any SPL token, any NFT), regardless of what put it there. Both end at the same `sweepTo` destination set via `/setsweep`.
 - **Solana mint engine limitation**: only supports a single signer (the wallet passed to `/mint`). Drops that require a second, ephemeral keypair to co-sign (common in some Candy Machine flows that create a fresh mint account inline) aren't supported yet — see Tasks.md.
 - **State watching (`/watch`) limitation**: evm only, and only zero-argument view functions returning a single simple value (bool/uint/address). No solana equivalent yet.
 - Schedules persist to disk and re-arm on restart. If the bot is down when a scheduled time passes, it's treated as past-due and skipped (with a message) rather than fired late.
@@ -121,7 +122,7 @@ The full evm feature set has been run for real on Arbitrum Sepolia, not just com
 Still unverified against a live RPC, because this build environment has no network access:
 - The **Solana mint engine** — Jito bundle submission, multi-RPC fallback, and the stale-blockhash retry path have never touched devnet or mainnet.
 - **Solana sweep** (`/sweep native` and `/sweep spl` for solana wallets) — reviewed carefully, never fired for real.
-- Solana state-watching isn't implemented at all (see Tasks.md) — schedule or manual-arm are the only solana triggers.
+- Solana on-chain *contract* state-watching (like evm's `/watch`) isn't implemented — schedule or manual-arm are the only solana mint triggers. Wallet *deposit* watching (`/watchwallet`) is a different thing and is implemented — see above.
 
 Before relying on the solana side for a real drop:
 1. Test against devnet first — Jito's block engine may not have a devnet equivalent, so the RPC-fallback path is what you'd exercise there; test the Jito tip path carefully on mainnet with a small tip before trusting it on a real drop.

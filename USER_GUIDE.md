@@ -86,10 +86,14 @@ Every mint broadcasts to every RPC configured for that chain simultaneously, wai
 
 This simulates the mint against live chain state (the same way the real transaction would be validated) and checks your wallet's balance. If the mint would revert — sold out, not started yet, wrong price, wallet not allowlisted — this tells you *before* you spend any gas. Get in the habit of running this before every real mint, especially the first time you use a new target.
 
-## Getting the NFT out of the mint wallet fast (sweeping)
+## Getting assets out of the mint wallet fast (sweeping)
 
-- `/setsweep <walletLabel> <destinationAddress>` — set where a wallet's fast wallet-out sends assets. Once set, every evm mint from that wallet automatically sweeps the newly-minted NFT to that address the moment it confirms — no extra command needed.
-- `/sweep <walletLabel> native|nft|spl ...` — manual sweep, for when you want to move something without waiting for a mint to trigger it. Run with no arguments to see the exact syntax for each mode (moving leftover ETH, a specific NFT, or a solana token).
+Sweeping works differently on the two chains:
+
+- **evm** — `/setsweep <walletLabel> <destinationAddress>` sets a destination, then every mint from that wallet automatically sweeps the newly-minted NFT there the moment it confirms. Tied to a bot-triggered mint.
+- **solana** — `/setsweep <walletLabel> <destinationAddress>` sets the same kind of destination, but the sweep itself is driven by `/watchwallet <walletLabel>` instead: a standing watch that checks the wallet every 10 seconds (configurable) and sweeps out *anything* it finds there — SOL, any SPL token, any NFT — regardless of how it got there. Not tied to a bot-triggered mint, so it also catches something sent from outside the bot entirely. Stop it with `/unwatchwallet <walletLabel>`.
+
+`/sweep <walletLabel> native|nft|spl ...` is also available on both chains for a one-off manual sweep without setting up a standing watch. Run with no arguments to see the exact syntax for each mode.
 
 ## Scheduling a mint for later
 
@@ -111,7 +115,7 @@ Example:
 ```
 This polls that read-only function every `intervalMs` (3000 = every 3 seconds) and fires the mint the instant the result matches `triggerWhen`. Useful for drops where you know the exact contract function that flips when minting opens, but not the exact time.
 
-`/unwatch <target>` stops an active watch. Solana state-watching isn't implemented — use `/schedule` instead for solana targets where you know the time, or mint manually with `/mint` the moment you see it's live.
+`/unwatch <target>` stops an active watch. This kind of contract-state watching is evm only — solana doesn't have an equivalent yet, so use `/schedule` for solana targets where you know the time, or mint manually with `/mint` the moment you see it's live. (Solana does have its own kind of watch, `/watchwallet` — see the sweeping section above — it's just watching a wallet for deposits, not a contract for a mint-open signal.)
 
 ## Checking on things
 
@@ -139,8 +143,10 @@ This polls that read-only function every `intervalMs` (3000 = every 3 seconds) a
 | `/schedule [target] [wallet] [time]` | Mint at a future time |
 | `/schedules` | List pending schedules |
 | `/unschedule <id>` | Cancel a schedule |
-| `/watch target\|wallet\|abi\|value\|ms` | Auto-mint on a contract condition |
-| `/unwatch <target>` | Stop a watch |
+| `/watch target\|wallet\|abi\|value\|ms` | Auto-mint on a contract condition (evm) |
+| `/unwatch <target>` | Stop a contract watch |
+| `/watchwallet <wallet> [ms]` | Auto-sweep anything that arrives in a solana wallet |
+| `/unwatchwallet <wallet>` | Stop a wallet-deposit watch |
 | `/status` | Bot summary |
 | `/checkchains` | Test RPC connectivity per chain |
 | `/cancel` | Stop a guided walk-through |

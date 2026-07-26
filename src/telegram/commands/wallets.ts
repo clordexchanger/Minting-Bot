@@ -3,6 +3,7 @@ import { listWallets } from "../../wallet/keystore.js";
 import { getEvmBalance } from "../../wallet/evm.js";
 import { getSolanaBalance } from "../../wallet/solana.js";
 import { env } from "../../config/env.js";
+import { replyLong } from "../replyLong.js";
 import type { Address } from "viem";
 
 export function registerWallets(bot: Bot): void {
@@ -45,6 +46,6 @@ export function registerWallets(bot: Bot): void {
       })
     );
 
-    await ctx.reply(lines.join("\n\n"), { parse_mode: "Markdown" });
+    await replyLong(ctx, lines.join("\n\n"), { parse_mode: "Markdown" });
   });
 }

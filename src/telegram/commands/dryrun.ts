@@ -3,6 +3,7 @@ import { getTarget, listTargets } from "../../config/targets.js";
 import { dryRunEvmMint } from "../../evm/mintEngine.js";
 import { dryRunSolanaMint } from "../../solana/mintEngine.js";
 import { listWallets } from "../../wallet/keystore.js";
+import { replyLong } from "../replyLong.js";
 
 export function registerDryRun(bot: Bot): void {
   bot.command("dryrun", async (ctx) => {
@@ -91,7 +92,7 @@ async function runDryRun(ctx: any, target: any, walletLabel: string): Promise<vo
       "Details:",
       ...infoLines,
     ];
-    await ctx.reply(lines.join("\n"));
+    await replyLong(ctx, lines.join("\n"));
   } catch (err) {
     await ctx.reply(`Dry run itself failed to run: ${err instanceof Error ? err.message : String(err)}`);
   }

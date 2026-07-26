@@ -18,6 +18,7 @@ import { registerNewWallet } from "./commands/newwallet.js";
 import { registerFanoutMint } from "./commands/fanoutmint.js";
 import { registerCheckChains } from "./commands/checkchains.js";
 import { registerCancel } from "./commands/cancel.js";
+import { registerWatchWallet } from "./commands/watchwallet.js";
 import { initScheduler } from "../scheduler/scheduler.js";
 
 export function createBot(): Bot {
@@ -53,6 +54,7 @@ export function createBot(): Bot {
   registerFanoutMint(bot);
   registerCheckChains(bot);
   registerCancel(bot);
+  registerWatchWallet(bot);
 
   bot.catch((err) => {
     logger.error("Unhandled bot error", { err: String(err) });

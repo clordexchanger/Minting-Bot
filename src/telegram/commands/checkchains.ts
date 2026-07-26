@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { checkAllChains } from "../../evm/chainCheck.js";
+import { replyLong } from "../replyLong.js";
 
 // Human-readable labels for the chains this project's .env.example ships
 // with. Anything not in this map just shows as "chainId N" — still useful,
@@ -51,6 +52,6 @@ export function registerCheckChains(bot: Bot): void {
     const failCount = results.filter((r) => !r.ok).length;
     const summary = failCount === 0 ? "All chains connected." : `${failCount} of ${results.length} failed — check the chainId/URL for those.`;
 
-    await ctx.reply([summary, "", ...lines].join("\n"));
+    await replyLong(ctx, [summary, "", ...lines].join("\n"));
   });
 }

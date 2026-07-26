@@ -1,4 +1,5 @@
 import { Bot } from "grammy";
+import { replyLong } from "../replyLong.js";
 
 const HELP_TEXT = `*Commands*
 
@@ -34,7 +35,10 @@ const HELP_TEXT = `*Commands*
 
 /watch target|walletLabel|viewFunctionAbi|triggerWhen|intervalMs — poll a read-only evm contract function and auto-mint the instant it matches triggerWhen. Example:
   /watch coolcats|main|function mintActive() view returns (bool)|true|3000
-/unwatch <target> — stop an active watch. Solana state-watching isn't implemented — schedule or manual-arm instead.
+/unwatch <target> — stop an active contract watch.
+
+/watchwallet <walletLabel> [intervalMs] — solana only. Polls the wallet's SOL balance and every SPL token account (NFTs included — an NFT is just a token with amount 1) and auto-sweeps anything found to that wallet's /setsweep destination. Needs a sweep destination set first. Default interval 10000ms.
+/unwatchwallet <walletLabel> — stop watching a wallet for deposits.
 
 /status — wallet + target summary
 /checkchains — pings every chain configured in EVM_RPC_URLS and reports which ones actually connect. Run this after editing your RPC config, especially for less common chains, before trusting any of them for a real mint.
@@ -46,10 +50,10 @@ const HELP_TEXT = `*Commands*
 - Already have a key you want to use? That import stays local-only, never through Telegram: \`npm run import-wallet -- --chain evm --label main --key 0x...\`
 - Need the raw key back out (e.g. to view in MetaMask)? Also local-only: \`npm run export-wallet -- --label main\`
 
-Solana sweep for the NFT itself needs the mint address by hand right now — see /sweep spl. Auto-sweep only covers evm for the moment.`;
+Solana auto-sweep works via /watchwallet (sweeps anything that arrives) rather than being tied to a bot-triggered mint like evm's is — see above.`;
 
 export function registerHelp(bot: Bot): void {
   bot.command(["help", "start"], async (ctx) => {
-    await ctx.reply(HELP_TEXT, { parse_mode: "Markdown" });
+    await replyLong(ctx, HELP_TEXT, { parse_mode: "Markdown" });
   });
 }

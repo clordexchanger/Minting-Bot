@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { listTargets } from "../../config/targets.js";
+import { replyLong } from "../replyLong.js";
 
 export function registerListTargets(bot: Bot): void {
   bot.command("listtargets", async (ctx) => {
@@ -16,6 +17,6 @@ export function registerListTargets(bot: Bot): void {
       }${t.wallet ? `\n  wallet: ${t.wallet}` : ""}`;
     });
 
-    await ctx.reply(lines.join("\n\n"), { parse_mode: "Markdown" });
+    await replyLong(ctx, lines.join("\n\n"), { parse_mode: "Markdown" });
   });
 }

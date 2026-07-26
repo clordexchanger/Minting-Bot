@@ -3,7 +3,9 @@ import { listTargets } from "../../config/targets.js";
 import { listWallets } from "../../wallet/keystore.js";
 import { listSchedules } from "../../scheduler/store.js";
 import { listActiveWatches } from "../../evm/watchRegistry.js";
+import { listActiveWalletWatches } from "../../solana/walletWatchRegistry.js";
 import { env } from "../../config/env.js";
+import { replyLong } from "../replyLong.js";
 
 export function registerStatus(bot: Bot): void {
   bot.command("status", async (ctx) => {
@@ -23,9 +25,10 @@ export function registerStatus(bot: Bot): void {
       `Jito block engine: ${env.jitoBlockEngineUrl}`,
       `Sweep destinations configured: ${wallets.filter((w) => w.sweepTo).length}/${wallets.length}`,
       `Pending schedules: ${listSchedules().length}`,
-      `Active watches: ${listActiveWatches().length}`,
+      `Active contract watches: ${listActiveWatches().length}`,
+      `Active wallet-deposit watches: ${listActiveWalletWatches().length}`,
     ];
 
-    await ctx.reply(lines.join("\n"), { parse_mode: "Markdown" });
+    await replyLong(ctx, lines.join("\n"), { parse_mode: "Markdown" });
   });
 }

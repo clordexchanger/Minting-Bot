@@ -71,7 +71,7 @@ export function registerSchedule(bot: Bot): void {
     }
     wizard.data.targetId = target.id;
 
-    const wallets = listWallets().filter((w) => w.chain === target.chain);        
+    const wallets = listWallets().filter((w) => w.chain === target.chain);
     if (wallets.length === 0 && !target.wallet) {
       await ctx.reply(`No ${target.chain} wallets available. Add one with /newwallet first.`);
       clearWizard(ctx.chat!.id);
@@ -116,7 +116,7 @@ export function registerSchedule(bot: Bot): void {
     }
     await ctx.answerCallbackQuery();
     const minutesFromNow = Number(ctx.match![1]);
-    const fireAt = new Date(Date.now() + minutesFromNow * 60_000).toISOString();  
+    const fireAt = new Date(Date.now() + minutesFromNow * 60_000).toISOString();
     clearWizard(ctx.chat!.id);
     await finalizeSchedule(bot, ctx, wizard.data, fireAt);
   });
