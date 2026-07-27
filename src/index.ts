@@ -18,6 +18,8 @@ async function main() {
     { command: "cancel", description: "Cancel a guided walk-through in progress" },
     { command: "watchwallet", description: "Auto-sweep anything that arrives in a solana wallet" },
     { command: "unwatchwallet", description: "Stop watching a wallet for deposits" },
+    { command: "watchsol", description: "Watch a solana account and auto-mint on a condition" },
+    { command: "unwatchsol", description: "Stop a solana account watch" },
     { command: "dryrun", description: "Validate a mint without sending it" },
     { command: "setsweep", description: "Set a wallet's fast wallet-out destination" },
     { command: "sweep", description: "Manually sweep native balance or a token out" },

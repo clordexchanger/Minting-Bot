@@ -45,7 +45,7 @@ Send `/addtarget` with nothing after it. The bot walks you through it:
   {"functionAbi":"function mint(uint256 quantity) payable","args":[1],"valueEth":"0.01"}
   ```
   Optional extra fields in that JSON: `priorityFeeMultiplier`, `maxFeeMultiplier`, `minPriorityFeeWei`, `gasLimit` — see README.md's "Tuning EVM fees" section.
-- For solana, `mintSpec` is also JSON, but holds the raw instruction data and accounts instead of a function signature — see `/help` for the exact shape.
+- For solana, `mintSpec` is also JSON, but holds the raw instruction data and accounts instead of a function signature — see `/help` for the exact shape. An account's pubkey can be `"$ephemeral:anyName"` instead of a real address if the mint needs a brand-new account to co-sign (common in some Candy Machine-style flows) — the bot generates and signs with a fresh keypair for it automatically.
 
 Example:
 ```
@@ -104,8 +104,9 @@ Sweeping works differently on the two chains:
 
 Schedules are saved to disk, so they survive the bot restarting — if the server reboots between now and when it's due to fire, it'll still go off on schedule (unless the reboot happens *after* the scheduled time already passed, in which case it's marked past-due and skipped rather than fired late).
 
-## Auto-minting the instant a contract's state changes (evm only)
+## Auto-minting the instant a contract's state changes
 
+**EVM:**
 ```
 /watch target|walletLabel|viewFunctionAbi|triggerWhen|intervalMs
 ```
@@ -113,9 +114,15 @@ Example:
 ```
 /watch coolcats|main|function mintActive() view returns (bool)|true|3000
 ```
-This polls that read-only function every `intervalMs` (3000 = every 3 seconds) and fires the mint the instant the result matches `triggerWhen`. Useful for drops where you know the exact contract function that flips when minting opens, but not the exact time.
+Polls that read-only function every `intervalMs` (3000 = every 3 seconds) and fires the mint the instant the result matches `triggerWhen`. `/unwatch <target>` stops it.
 
-`/unwatch <target>` stops an active watch. This kind of contract-state watching is evm only — solana doesn't have an equivalent yet, so use `/schedule` for solana targets where you know the time, or mint manually with `/mint` the moment you see it's live. (Solana does have its own kind of watch, `/watchwallet` — see the sweeping section above — it's just watching a wallet for deposits, not a contract for a mint-open signal.)
+**Solana:**
+```
+/watchsol target|walletLabel|accountPubkey|byteOffset|byteLength|expectedHex|intervalMs
+```
+Solana doesn't have read-only "view functions" the way EVM does, so this polls a raw account's bytes at a specific position instead — you need to know the target program's account layout to find the right `byteOffset`/`byteLength` (from an Anchor IDL, the program's source, or an Anchor-aware block explorer). More manual than the EVM version, but same idea: fires the mint once those bytes match `expectedHex`. `/unwatchsol <target>` stops it.
+
+Neither `/watch` nor `/watchsol` currently survive a bot restart — re-arm them manually if the bot restarts while one's active. (`/watchwallet`, the deposit-sweeping watch from the section above, is different and does survive restarts.)
 
 ## Checking on things
 
@@ -145,6 +152,8 @@ This polls that read-only function every `intervalMs` (3000 = every 3 seconds) a
 | `/unschedule <id>` | Cancel a schedule |
 | `/watch target\|wallet\|abi\|value\|ms` | Auto-mint on a contract condition (evm) |
 | `/unwatch <target>` | Stop a contract watch |
+| `/watchsol target\|wallet\|account\|offset\|len\|hex\|ms` | Auto-mint on an account condition (solana) |
+| `/unwatchsol <target>` | Stop a solana account watch |
 | `/watchwallet <wallet> [ms]` | Auto-sweep anything that arrives in a solana wallet |
 | `/unwatchwallet <wallet>` | Stop a wallet-deposit watch |
 | `/status` | Bot summary |

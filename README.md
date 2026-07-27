@@ -73,6 +73,7 @@ Fast wallet-out:
 Triggers:
 - `/schedule testdrop main 2026-08-01T14:00:00Z` — fires the mint automatically at that UTC time, even across a bot restart in between.
 - `/watch testdrop|main|function mintActive() view returns (bool)|true|3000` — polls the contract's `mintActive()` every 3s, mints the instant it returns `true`.
+- `/watchsol soldrop|main|ProgramStateAccount111...|8|1|01|3000` — solana equivalent, polls a raw account's bytes instead of a view function (offsets shown are illustrative — real ones depend on the target program's account layout).
 
 Before a real mint:
 - `/dryrun testdrop main` — simulates the mint against current chain state and checks wallet balance, without sending anything. Catches "would revert" before it costs gas.
@@ -112,7 +113,7 @@ None of this is something I can do for you — funding wallets and pointing at a
 - `EVM_RPC_URLS` is keyed by chainId, so a mint/sweep/watch on a target automatically uses the RPC(s) configured for that target's `chainId`. A target whose chain has no entry in `EVM_RPC_URLS` fails with a clear error naming the missing chainId, rather than silently trying the wrong network.
 - Wallet keys are encrypted at rest in `data/keystore.enc.json`. `/wallets` only ever shows label, chain, address, sweep destination, and balance, never key material. Nothing in the Telegram surface can accept or display a private key.
 - Auto-sweep works differently per chain: evm auto-sweeps the specific NFT right after a bot-triggered mint confirms (reads the tokenId out of the receipt's Transfer event). Solana instead uses `/watchwallet` — a standing watch on the wallet itself that sweeps anything that shows up (SOL, any SPL token, any NFT), regardless of what put it there. Both end at the same `sweepTo` destination set via `/setsweep`.
-- **Solana mint engine limitation**: only supports a single signer (the wallet passed to `/mint`). Drops that require a second, ephemeral keypair to co-sign (common in some Candy Machine flows that create a fresh mint account inline) aren't supported yet — see Tasks.md.
+- **Solana multi-signer**: supported via `"$ephemeral:anyName"` as an account's pubkey in mintSpec — the bot generates a fresh keypair and co-signs with it, covering mint flows (some Candy Machine-style programs) that create a brand-new account inline. Any newly-created account address is reported back after the mint. Not yet live-tested against a real program that needs this — the mechanism is sound but unverified end to end.
 - **State watching (`/watch`) limitation**: evm only, and only zero-argument view functions returning a single simple value (bool/uint/address). No solana equivalent yet.
 - Schedules persist to disk and re-arm on restart. If the bot is down when a scheduled time passes, it's treated as past-due and skipped (with a message) rather than fired late.
 
@@ -122,7 +123,8 @@ The full evm feature set has been run for real on Arbitrum Sepolia, not just com
 Still unverified against a live RPC, because this build environment has no network access:
 - The **Solana mint engine** — Jito bundle submission, multi-RPC fallback, and the stale-blockhash retry path have never touched devnet or mainnet.
 - **Solana sweep** (`/sweep native` and `/sweep spl` for solana wallets) — reviewed carefully, never fired for real.
-- Solana on-chain *contract* state-watching (like evm's `/watch`) isn't implemented — schedule or manual-arm are the only solana mint triggers. Wallet *deposit* watching (`/watchwallet`) is a different thing and is implemented — see above.
+- Solana on-chain *contract* state-watching now has an equivalent to evm's `/watch`: `/watchsol` polls a raw account's bytes (Solana has no view functions, so there's no equivalent to calling a read-only function) and fires a mint once they match. Finding the right byte offset/length needs the target program's account layout — more manual than evm's version, which just needs a function signature. Wallet *deposit* watching (`/watchwallet`) is a different thing — that watches a wallet for anything arriving, not a program account for a condition.
+- `/watchwallet` now persists across bot restarts (saved to `data/walletwatches.json`, re-armed automatically on startup) — `/watchsol` and evm's `/watch` do not persist yet, they're purely in-memory and need re-arming manually after a restart.
 
 Before relying on the solana side for a real drop:
 1. Test against devnet first — Jito's block engine may not have a devnet equivalent, so the RPC-fallback path is what you'd exercise there; test the Jito tip path carefully on mainnet with a small tip before trusting it on a real drop.

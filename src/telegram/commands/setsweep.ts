@@ -1,5 +1,5 @@
 import { Bot } from "grammy";
-import { setSweepTo } from "../../wallet/keystore.js";
+import { setSweepTo, listWallets } from "../../wallet/keystore.js";
 
 export function registerSetSweep(bot: Bot): void {
   bot.command("setsweep", async (ctx) => {
@@ -15,12 +15,21 @@ export function registerSetSweep(bot: Bot): void {
       return;
     }
 
+    const wallet = listWallets().find((w) => w.label === label);
     const ok = setSweepTo(label, destination);
-    await ctx.reply(
-      ok
-        ? `Sweep destination for *${label}* set to \`${destination}\`.\nEVM mints from this wallet will auto-sweep the minted NFT there once confirmed.`
-        : `No wallet found with label "${label}". Check /wallets.`,
-      { parse_mode: "Markdown" }
-    );
+
+    if (!ok) {
+      await ctx.reply(`No wallet found with label "${label}". Check /wallets.`);
+      return;
+    }
+
+    const behaviorNote =
+      wallet?.chain === "solana"
+        ? "Run /watchwallet " + label + " to start auto-sweeping anything that arrives here (SOL, any SPL token, any NFT) — this destination alone doesn't trigger anything on its own for solana."
+        : "EVM mints from this wallet will auto-sweep the minted NFT there once confirmed.";
+
+    await ctx.reply(`Sweep destination for *${label}* set to \`${destination}\`.\n${behaviorNote}`, {
+      parse_mode: "Markdown",
+    });
   });
 }

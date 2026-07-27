@@ -2,6 +2,24 @@ import { Bot } from "grammy";
 import { listWallets } from "../../wallet/keystore.js";
 import { watchSolanaWalletDeposits } from "../../solana/walletWatch.js";
 import { registerWalletWatch, stopWalletWatch, listActiveWalletWatches } from "../../solana/walletWatchRegistry.js";
+import { addWalletWatchEntry, removeWalletWatchEntry, listWalletWatchEntries } from "../../solana/walletWatchStore.js";
+import { logger } from "../../utils/logger.js";
+
+function arm(bot: Bot, walletLabel: string, intervalMs: number, chatId: number): void {
+  const handle = watchSolanaWalletDeposits(walletLabel, intervalMs, (message) => {
+    bot.api.sendMessage(chatId, message).catch(() => {});
+  });
+  registerWalletWatch(walletLabel, handle);
+}
+
+/** Call once at startup — reloads any wallet watches that survived a restart and re-arms them. */
+export function initWalletWatches(bot: Bot): void {
+  const entries = listWalletWatchEntries();
+  for (const entry of entries) {
+    arm(bot, entry.walletLabel, entry.intervalMs, entry.chatId);
+  }
+  logger.info("Wallet watches initialized", { count: entries.length });
+}
 
 export function registerWatchWallet(bot: Bot): void {
   bot.command("watchwallet", async (ctx) => {
@@ -31,13 +49,11 @@ export function registerWatchWallet(bot: Bot): void {
     const intervalMs = intervalMsRaw ? Number(intervalMsRaw) : 10_000;
     const chatId = ctx.chat.id;
 
-    const handle = watchSolanaWalletDeposits(walletLabel, intervalMs, (message) => {
-      bot.api.sendMessage(chatId, message).catch(() => {});
-    });
-    registerWalletWatch(walletLabel, handle);
+    arm(bot, walletLabel, intervalMs, chatId);
+    addWalletWatchEntry({ walletLabel, intervalMs, chatId });
 
     await ctx.reply(
-      `Watching wallet *${walletLabel}* every ${intervalMs}ms — anything that arrives (SOL or any SPL token/NFT) gets auto-swept to \`${wallet.sweepTo}\`. /unwatchwallet ${walletLabel} to stop.`,
+      `Watching wallet *${walletLabel}* every ${intervalMs}ms — anything that arrives (SOL or any SPL token/NFT) gets auto-swept to \`${wallet.sweepTo}\`. Survives a bot restart. /unwatchwallet ${walletLabel} to stop.`,
       { parse_mode: "Markdown" }
     );
   });
@@ -49,6 +65,7 @@ export function registerWatchWallet(bot: Bot): void {
       return;
     }
     const stopped = stopWalletWatch(walletLabel);
-    await ctx.reply(stopped ? `Stopped watching ${walletLabel}.` : `No active watch found for "${walletLabel}".`);
+    removeWalletWatchEntry(walletLabel);
+    await ctx.reply(stopped ? `Stopped watching ${walletLabel}.` : `No active watch found for "${walletLabel}" (removed from persisted list either way, in case it was stale).`);
   });
 }

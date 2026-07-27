@@ -77,6 +77,12 @@ export async function executeMint(bot: Bot, chatId: number, targetOrId: MintTarg
     } else {
       const result = await mintOnSolana(target, walletLabel);
       await bot.api.sendMessage(chatId, `Submitted via ${result.wonVia}: ${result.signature}\nWaiting for confirmation...`);
+      if (result.ephemeralAddresses.length > 0) {
+        await bot.api.sendMessage(
+          chatId,
+          `New account(s) created by this mint: ${result.ephemeralAddresses.join(", ")}`
+        );
+      }
 
       const confirmation = await waitForSolanaConfirmation(result.signature);
       await bot.api.sendMessage(

@@ -15,7 +15,7 @@ const HELP_TEXT = `*Commands*
 
   Solana mintSpec must also be JSON — the instruction's raw data and account list, since Solana programs don't share a common ABI format the way EVM contracts do:
   {"instructionDataBase64":"...","accounts":[{"pubkey":"...","isSigner":true,"isWritable":true}],"tipLamports":100000,"computeUnitPriceMicroLamports":50000}
-  tipLamports triggers a Jito bundle submission for priority landing; omit it (or set 0) to just broadcast to configured RPCs. The guided /addtarget walk-through only covers evm — solana targets need this manual syntax.
+  tipLamports triggers a Jito bundle submission for priority landing; omit it (or set 0) to just broadcast to configured RPCs. An account's pubkey can be "$ephemeral:anyName" instead of a real address — the bot generates a fresh keypair and co-signs with it, for mint flows that create a brand-new account inline (some Candy Machine-style programs need this). The guided /addtarget walk-through only covers evm — solana targets need this manual syntax.
 
 /listtargets — show all configured targets
 /removetarget <label or id>
@@ -37,7 +37,10 @@ const HELP_TEXT = `*Commands*
   /watch coolcats|main|function mintActive() view returns (bool)|true|3000
 /unwatch <target> — stop an active contract watch.
 
-/watchwallet <walletLabel> [intervalMs] — solana only. Polls the wallet's SOL balance and every SPL token account (NFTs included — an NFT is just a token with amount 1) and auto-sweeps anything found to that wallet's /setsweep destination. Needs a sweep destination set first. Default interval 10000ms.
+/watchsol target|walletLabel|accountPubkey|byteOffset|byteLength|expectedHex|intervalMs — solana equivalent of /watch. Solana has no view functions, so this polls a raw account's bytes at [byteOffset, byteOffset+byteLength) and fires the mint once they equal expectedHex. Finding the right offset needs the program's account layout (Anchor IDL, source, or an Anchor-aware explorer) — more expert-level than evm's /watch.
+/unwatchsol <target> — stop a solana account watch.
+
+/watchwallet <walletLabel> [intervalMs] — solana only. Polls the wallet's SOL balance and every SPL token account (NFTs included) and auto-sweeps anything found to that wallet's /setsweep destination. Needs a sweep destination set first. Default interval 10000ms. Persists across bot restarts.
 /unwatchwallet <walletLabel> — stop watching a wallet for deposits.
 
 /status — wallet + target summary
