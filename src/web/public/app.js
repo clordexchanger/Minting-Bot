@@ -19,6 +19,91 @@ async function api(path, options = {}) {
   return data;
 }
 
+// ---------- Modal ----------
+function openModal(title, bodyHtml, actions = []) {
+  $("modal-title").textContent = title;
+  $("modal-body").innerHTML = bodyHtml;
+  $("modal-actions").innerHTML = "";
+  actions.forEach((a) => {
+    const btn = document.createElement("button");
+    btn.textContent = a.label;
+    if (a.secondary) btn.className = "secondary";
+    btn.addEventListener("click", () => {
+      a.onClick?.();
+      if (a.closeOnClick !== false) closeModal();
+    });
+    $("modal-actions").appendChild(btn);
+  });
+  $("modal-overlay").style.display = "flex";
+}
+
+function closeModal() {
+  $("modal-overlay").style.display = "none";
+}
+
+$("modal-close").addEventListener("click", closeModal);
+$("modal-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "modal-overlay") closeModal();
+});
+
+function pickWalletModal(eligibleWallets) {
+  return new Promise((resolve, reject) => {
+    openModal(
+      "Choose a wallet",
+      '<div class="modal-wallet-list" id="wallet-pick-list"></div>',
+      [{ label: "Cancel", secondary: true, onClick: () => reject(new Error("Cancelled")) }]
+    );
+    const container = $("wallet-pick-list");
+    eligibleWallets.forEach((w) => {
+      const btn = document.createElement("button");
+      btn.textContent = `${w.label} — ${w.address.slice(0, 6)}...${w.address.slice(-4)}`;
+      btn.addEventListener("click", () => {
+        closeModal();
+        resolve(w.label);
+      });
+      container.appendChild(btn);
+    });
+  });
+}
+
+function promptModal(title, placeholder) {
+  return new Promise((resolve, reject) => {
+    openModal(
+      title,
+      `<input type="text" id="modal-input" placeholder="${placeholder}" style="width:100%; background:#0d0f14; border:1px solid var(--panel-border); color:var(--text); border-radius:6px; padding:10px 12px; font-family:inherit;" />`,
+      [
+        { label: "Cancel", secondary: true, onClick: () => reject(new Error("Cancelled")) },
+        {
+          label: "Save",
+          onClick: () => {
+            const val = $("modal-input").value.trim();
+            if (!val) {
+              reject(new Error("Cancelled"));
+              return;
+            }
+            resolve(val);
+          },
+        },
+      ]
+    );
+    setTimeout(() => $("modal-input")?.focus(), 50);
+  });
+}
+
+function showDryRunModal(targetLabel, result) {
+  const statusLine = result.ok ? "✅ Would likely succeed" : "❌ Issues found";
+  const issuesText = (result.issues || []).map((i) => `• ${i}`).join("\n");
+  const infoText = Object.entries(result.info || {})
+    .map(([k, v]) => `${k}: ${v}`)
+    .join("\n");
+  const body = [statusLine, issuesText, infoText].filter(Boolean).join("\n\n");
+  openModal(`Dry run — ${targetLabel}`, body, [{ label: "Close", secondary: true }]);
+}
+
+function isCancelled(err) {
+  return err instanceof Error && err.message === "Cancelled";
+}
+
 // ---------- Auth ----------
 async function checkAuth() {
   const { authenticated } = await api("/me").catch(() => ({ authenticated: false }));
@@ -98,9 +183,7 @@ async function pickWallet(target) {
     throw new Error(`No ${target.chain} wallets available — add one first.`);
   }
   if (eligible.length === 1) return eligible[0].label;
-  const label = prompt(`Which wallet?\n${eligible.map((w) => w.label).join(", ")}`);
-  if (!label) throw new Error("Cancelled");
-  return label;
+  return pickWalletModal(eligible);
 }
 
 $("targets-list").addEventListener("click", async (e) => {
@@ -125,15 +208,9 @@ $("targets-list").addEventListener("click", async (e) => {
     try {
       const wallet = await pickWallet(target);
       const result = await api("/dryrun", { method: "POST", body: JSON.stringify({ targetId: id, walletLabel: wallet }) });
-      const lines = [
-        result.ok ? "✅ Would likely succeed" : "❌ Issues found:",
-        ...(result.issues || []).map((i) => `  - ${i}`),
-        "",
-        ...Object.entries(result.info || {}).map(([k, v]) => `${k}: ${v}`),
-      ];
-      alert(lines.join("\n"));
+      showDryRunModal(target.label, result);
     } catch (err) {
-      showToast(err.message, "error");
+      if (!isCancelled(err)) showToast(err.message, "error");
     } finally {
       btn.disabled = false;
       btn.textContent = "Dry run";
@@ -151,8 +228,9 @@ $("targets-list").addEventListener("click", async (e) => {
         `Mint ${result.confirmed ? "confirmed" : result.reverted ? "reverted" : "submitted"}: ${result.txHash || result.signature}`,
         result.confirmed ? "success" : "error"
       );
+      loadWallets();
     } catch (err) {
-      showToast(err.message, "error");
+      if (!isCancelled(err)) showToast(err.message, "error");
     } finally {
       btn.disabled = false;
       btn.textContent = "Mint";
@@ -221,6 +299,21 @@ $("submit-add-target").addEventListener("click", async () => {
 });
 
 // ---------- Wallets ----------
+function formatBalances(balances) {
+  if (!balances || balances.length === 0) return '<div class="balance-row">no balance data</div>';
+  return (
+    '<div class="balance-list">' +
+    balances
+      .map((b) => {
+        const label = b.chainId === "solana" ? "SOL" : `chain ${b.chainId}`;
+        const amount = b.balance === null || b.balance === undefined ? "—" : Number(b.balance).toFixed(5);
+        return `<div class="balance-row">${label}: <span class="amount">${amount}</span></div>`;
+      })
+      .join("") +
+    "</div>"
+  );
+}
+
 async function loadWallets() {
   const wallets = await api("/wallets");
   cachedWallets = wallets;
@@ -237,6 +330,7 @@ async function loadWallets() {
         <div class="card-title">${w.label} <span style="color:var(--text-dim); font-weight:400;">(${w.chain})</span></div>
         <div class="card-sub">${w.address}</div>
         <div class="card-sub">sweep to: ${w.sweepTo || "not set"}</div>
+        ${formatBalances(w.balances)}
       </div>
       <div class="card-actions">
         <button class="secondary set-sweep-btn" data-label="${w.label}">Set sweep</button>
@@ -260,14 +354,13 @@ $("wallets-list").addEventListener("click", async (e) => {
   }
 
   if (btn.classList.contains("set-sweep-btn")) {
-    const destination = prompt(`Sweep destination address for ${label}:`);
-    if (!destination) return;
     try {
+      const destination = await promptModal(`Sweep destination for ${label}`, "Destination address");
       await api(`/wallets/${label}/sweep-destination`, { method: "POST", body: JSON.stringify({ destination }) });
       loadWallets();
       showToast("Sweep destination set");
     } catch (err) {
-      showToast(err.message, "error");
+      if (!isCancelled(err)) showToast(err.message, "error");
     }
   }
 });

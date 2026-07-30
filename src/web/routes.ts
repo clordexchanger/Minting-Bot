@@ -5,6 +5,8 @@ import { addTarget, getTarget, listTargets, removeTarget } from "../config/targe
 import { listWallets, setSweepTo, removeWallet } from "../wallet/keystore.js";
 import { generateEvmKeypair, generateSolanaKeypair } from "../wallet/generate.js";
 import { storeSecret } from "../wallet/keystore.js";
+import { getEvmBalance } from "../wallet/evm.js";
+import { getSolanaBalance } from "../wallet/solana.js";
 import { mintOnEvm, waitForEvmConfirmation, dryRunEvmMint } from "../evm/mintEngine.js";
 import { mintOnSolana, waitForSolanaConfirmation, dryRunSolanaMint } from "../solana/mintEngine.js";
 import { extractMintedTokenId, sweepErc721 } from "../evm/sweep.js";
@@ -74,8 +76,26 @@ export function buildApiRouter(bot: Bot): Router {
   });
 
   // ---- Wallets ----
-  router.get("/wallets", (_req, res) => {
-    res.json(listWallets());
+  router.get("/wallets", async (_req, res) => {
+    const wallets = listWallets();
+    const withBalances = await Promise.all(
+      wallets.map(async (w) => {
+        if (w.chain === "evm") {
+          const chainIds = Object.keys(env.evmRpcMap);
+          const balances = await Promise.all(
+            chainIds.map(async (chainId) => {
+              const urls = env.evmRpcMap[chainId];
+              const balance = await getEvmBalance(urls[0], w.address as Address);
+              return { chainId, balance };
+            })
+          );
+          return { ...w, balances };
+        }
+        const balance = await getSolanaBalance(env.solanaRpcUrls[0], w.address);
+        return { ...w, balances: [{ chainId: "solana", balance }] };
+      })
+    );
+    res.json(withBalances);
   });
 
   router.post("/wallets", (req, res) => {
