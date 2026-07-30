@@ -56,6 +56,18 @@ export const env = {
   walletKeystorePassphrase: process.env.WALLET_KEYSTORE_PASSPHRASE ?? "",
 
   targetsFile: optional("TARGETS_FILE", "./data/targets.json"),
+
+  // Web dashboard — off by default. Set WEB_DASHBOARD_ENABLED=true plus a
+  // password to turn it on. This runs alongside the Telegram bot in the
+  // same process, not instead of it.
+  webDashboardEnabled: optional("WEB_DASHBOARD_ENABLED", "false") === "true",
+  webDashboardPort: Number(optional("WEB_DASHBOARD_PORT", "8443")),
+  webDashboardPassword: process.env.WEB_DASHBOARD_PASSWORD ?? "",
+  webSessionSecret: process.env.WEB_SESSION_SECRET ?? "",
+  // Only set this true once the dashboard is actually served over HTTPS —
+  // a "secure" cookie is refused by the browser over plain HTTP, which
+  // would make login silently fail.
+  webCookieSecure: optional("WEB_COOKIE_SECURE", "false") === "true",
 };
 
 /** RPC URLs configured for a given evm chain. Empty array if none are set for it. */
@@ -65,4 +77,13 @@ export function getEvmRpcUrls(chainId: number): string[] {
 
 if (Number.isNaN(env.telegramOperatorId)) {
   throw new Error("TELEGRAM_OPERATOR_ID must be a numeric Telegram user ID.");
+}
+
+if (env.webDashboardEnabled) {
+  if (!env.webDashboardPassword) {
+    throw new Error("WEB_DASHBOARD_ENABLED is true but WEB_DASHBOARD_PASSWORD is not set — set a strong password before enabling the dashboard.");
+  }
+  if (!env.webSessionSecret) {
+    throw new Error("WEB_DASHBOARD_ENABLED is true but WEB_SESSION_SECRET is not set — set any long random string.");
+  }
 }

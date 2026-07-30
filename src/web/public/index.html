@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mint Bot Dashboard</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <form id="login-form" class="login-card">
+    <h1>Mint Bot Dashboard</h1>
+    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required />
+    <button type="submit">Log in</button>
+    <p id="login-error" class="error-text"></p>
+  </form>
+</div>
+
+<div id="app-screen" class="screen" style="display:none;">
+  <header>
+    <h1>Mint Bot Dashboard</h1>
+    <button id="logout-btn" class="secondary">Log out</button>
+  </header>
+
+  <section id="status-panel" class="panel">
+    <h2>Status</h2>
+    <div id="status-content" class="status-grid"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Targets</h2>
+      <button id="show-add-target">+ Add target</button>
+    </div>
+    <div id="add-target-form" class="form-card" style="display:none;">
+      <h3>Add evm target</h3>
+      <input id="t-label" placeholder="Label (e.g. coolcats)" />
+      <input id="t-address" placeholder="Contract address (0x...)" />
+      <input id="t-chainid" placeholder="Chain ID (e.g. 8453)" />
+      <label><input type="checkbox" id="t-hasqty" /> Takes a quantity argument</label>
+      <input id="t-qty" placeholder="Quantity (e.g. 1)" style="display:none;" />
+      <label><input type="checkbox" id="t-payable" /> Payable</label>
+      <input id="t-price" placeholder="Price in ETH (e.g. 0.01)" style="display:none;" />
+      <select id="t-wallet"><option value="">No default wallet</option></select>
+      <div class="form-actions">
+        <button id="submit-add-target">Add</button>
+        <button id="cancel-add-target" class="secondary">Cancel</button>
+      </div>
+      <p class="hint">For solana or more complex evm mint functions, use the Telegram bot's /addtarget with the full mintSpec JSON instead.</p>
+    </div>
+    <div id="targets-list" class="card-list"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Wallets</h2>
+      <button id="show-add-wallet">+ New wallet</button>
+    </div>
+    <div id="add-wallet-form" class="form-card" style="display:none;">
+      <select id="w-chain">
+        <option value="evm">EVM</option>
+        <option value="solana">Solana</option>
+      </select>
+      <input id="w-label" placeholder="Label (e.g. main)" />
+      <div class="form-actions">
+        <button id="submit-add-wallet">Generate</button>
+        <button id="cancel-add-wallet" class="secondary">Cancel</button>
+      </div>
+      <p class="hint">Generates a brand-new wallet. Never asks for or shows a private key here.</p>
+    </div>
+    <div id="wallets-list" class="card-list"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Schedules</h2>
+    <div id="schedules-list" class="card-list"></div>
+  </section>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

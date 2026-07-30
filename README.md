@@ -96,6 +96,15 @@ Multi-wallet:
 ## Running remotely
 See `deploy/README.md` for Google Cloud (Compute Engine) or `deploy/AWS_README.md` for AWS (EC2) — same idea either way: a small always-on VM with a systemd service, so it stays up across reboots and crashes instead of dying when you close your laptop.
 
+## Web dashboard (optional)
+A password-gated browser UI runs alongside the Telegram bot in the same process — same targets, wallets, mints, dry-runs, and schedules, one click instead of a typed command. Off by default.
+
+To enable: set `WEB_DASHBOARD_ENABLED=true`, `WEB_DASHBOARD_PASSWORD`, and `WEB_SESSION_SECRET` in `.env` (see `.env.example` for the exact vars, including how to generate a session secret), rebuild, restart.
+
+**Do not expose this to the internet without HTTPS.** A password login over plain HTTP sends the password in the clear to anyone on the network path. The straightforward way to add HTTPS without buying a domain: point a free `nip.io` hostname (resolves to your server's own IP automatically, e.g. `1.2.3.4.nip.io` → `1.2.3.4`) at the server, and put Caddy in front of the dashboard — Caddy gets you a real, trusted Let's Encrypt certificate with a couple of lines of config and zero manual renewal. Ask if you want the exact steps for your setup.
+
+Also note: enabling this means opening an inbound port on your server's firewall/security group for the first time — everything else in this project so far has been outbound-only.
+
 ## Going from testnet to mainnet
 This isn't a code change — the bot already supports any evm chain you configure. What actually changes:
 

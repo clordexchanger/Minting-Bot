@@ -1,4 +1,5 @@
 import { createBot } from "./telegram/bot.js";
+import { startWebDashboard } from "./web/server.js";
 import { logger } from "./utils/logger.js";
 
 async function main() {
@@ -30,6 +31,8 @@ async function main() {
     { command: "unwatch", description: "Stop an active watch" },
     { command: "status", description: "Show bot status" },
   ]);
+
+  startWebDashboard(bot); // no-op unless WEB_DASHBOARD_ENABLED=true
 
   logger.info("Starting bot...");
   await bot.start({
