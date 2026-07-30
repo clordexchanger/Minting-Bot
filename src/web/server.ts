@@ -39,6 +39,16 @@ export function startWebDashboard(bot: Bot): void {
   // reliably set a "secure" cookie behind a reverse proxy.
   app.set("trust proxy", 1);
   app.use(express.json());
+
+  // Without this, browsers can cache a GET /api/me response (e.g. "not
+  // authenticated") and reuse it via a 304 on the next request instead of
+  // asking again — which makes a successful login look like it silently
+  // did nothing, since the client never learns the session actually
+  // changed. Every /api/* response must always be re-fetched fresh.
+  app.use("/api", (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
   app.use(
     session({
       secret: env.webSessionSecret,
