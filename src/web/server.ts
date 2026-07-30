@@ -33,12 +33,18 @@ export function startWebDashboard(bot: Bot): void {
   if (!env.webDashboardEnabled) return;
 
   const app = express();
+  // Caddy terminates TLS and forwards to this app over plain HTTP on
+  // localhost — without this, Express has no way to know the original
+  // browser connection was HTTPS, and express-session silently refuses to
+  // reliably set a "secure" cookie behind a reverse proxy.
+  app.set("trust proxy", 1);
   app.use(express.json());
   app.use(
     session({
       secret: env.webSessionSecret,
       resave: false,
       saveUninitialized: false,
+      proxy: true, // trust X-Forwarded-Proto from Caddy when deciding if the cookie can be marked secure
       cookie: {
         httpOnly: true,
         secure: env.webCookieSecure,
