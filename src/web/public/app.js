@@ -161,9 +161,9 @@ async function loadTargets() {
   list.innerHTML = targets
     .map(
       (t) => `
-    <div class="card" data-target-id="${t.id}">
+    <div class="card" data-target-id="${t.id}" data-chain="${t.chain}">
       <div class="card-info">
-        <div class="card-title">${t.label} <span style="color:var(--text-dim); font-weight:400;">(${t.chain}${t.chainId ? "/" + t.chainId : ""})</span></div>
+        <div class="card-title">${t.label}<span class="chain-tag ${t.chain}">${t.chain}${t.chainId ? " " + t.chainId : ""}</span></div>
         <div class="card-sub">${t.address}${t.priceNote ? " · " + t.priceNote : ""}${t.wallet ? " · wallet: " + t.wallet : ""}</div>
       </div>
       <div class="card-actions">
@@ -325,9 +325,9 @@ async function loadWallets() {
   list.innerHTML = wallets
     .map(
       (w) => `
-    <div class="card">
+    <div class="card" data-chain="${w.chain}">
       <div class="card-info">
-        <div class="card-title">${w.label} <span style="color:var(--text-dim); font-weight:400;">(${w.chain})</span></div>
+        <div class="card-title">${w.label}<span class="chain-tag ${w.chain}">${w.chain}</span></div>
         <div class="card-sub">${w.address}</div>
         <div class="card-sub">sweep to: ${w.sweepTo || "not set"}</div>
         ${formatBalances(w.balances)}
