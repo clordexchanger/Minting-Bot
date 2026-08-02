@@ -299,19 +299,42 @@ $("submit-add-target").addEventListener("click", async () => {
 });
 
 // ---------- Wallets ----------
-function formatBalances(balances) {
-  if (!balances || balances.length === 0) return '<div class="balance-row">no balance data</div>';
-  return (
-    '<div class="balance-list">' +
-    balances
-      .map((b) => {
-        const label = b.chainId === "solana" ? "SOL" : `chain ${b.chainId}`;
-        const amount = b.balance === null || b.balance === undefined ? "—" : Number(b.balance).toFixed(5);
-        return `<div class="balance-row">${label}: <span class="amount">${amount}</span></div>`;
-      })
-      .join("") +
-    "</div>"
-  );
+const CHAIN_NAMES = {
+  "1": "Ethereum",
+  "11155111": "Ethereum Sepolia",
+  "8453": "Base",
+  "84532": "Base Sepolia",
+  "42161": "Arbitrum",
+  "421614": "Arbitrum Sepolia",
+  "7777777": "Zora",
+  "999999999": "Zora Sepolia",
+  "2741": "Abstract",
+  "11124": "Abstract Testnet",
+  "143": "Monad",
+  "10143": "Monad Testnet",
+  "2020": "Ronin",
+  "2021": "Ronin Saigon",
+  "999": "Hyperliquid",
+  "998": "Hyperliquid Testnet",
+  "9745": "Plasma",
+  "9746": "Plasma Testnet",
+  "4663": "Robinhood",
+  "46630": "Robinhood Testnet",
+  solana: "Solana",
+};
+
+function chainName(chainId) {
+  return CHAIN_NAMES[chainId] || `Chain ${chainId}`;
+}
+
+function showBalancesModal(wallet) {
+  const rows = (wallet.balances || [])
+    .map((b) => {
+      const amount = b.balance === null || b.balance === undefined ? "—" : Number(b.balance).toFixed(5);
+      return `${chainName(b.chainId)}: ${amount}`;
+    })
+    .join("\n");
+  openModal(`Balances — ${wallet.label}`, rows || "No balance data.", [{ label: "Close", secondary: true }]);
 }
 
 async function loadWallets() {
@@ -319,7 +342,7 @@ async function loadWallets() {
   cachedWallets = wallets;
   const list = $("wallets-list");
   if (wallets.length === 0) {
-    list.innerHTML = '<div class="empty-state">No wallets yet — generate one above.</div>';
+    list.innerHTML = '<div class="empty-state">No wallets yet — generate or import one above.</div>';
     return;
   }
   list.innerHTML = wallets
@@ -330,9 +353,9 @@ async function loadWallets() {
         <div class="card-title">${w.label}<span class="chain-tag ${w.chain}">${w.chain}</span></div>
         <div class="card-sub">${w.address}</div>
         <div class="card-sub">sweep to: ${w.sweepTo || "not set"}</div>
-        ${formatBalances(w.balances)}
       </div>
       <div class="card-actions">
+        <button class="secondary balances-btn" data-label="${w.label}">Balances</button>
         <button class="secondary set-sweep-btn" data-label="${w.label}">Set sweep</button>
         <button class="secondary danger remove-wallet-btn" data-label="${w.label}">Remove</button>
       </div>
@@ -345,6 +368,12 @@ $("wallets-list").addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
   const label = btn.dataset.label;
+
+  if (btn.classList.contains("balances-btn")) {
+    const wallet = cachedWallets.find((w) => w.label === label);
+    if (wallet) showBalancesModal(wallet);
+    return;
+  }
 
   if (btn.classList.contains("remove-wallet-btn")) {
     if (!confirm(`Remove wallet "${label}"? This only deletes it from the bot's keystore, it doesn't touch on-chain funds.`)) return;
@@ -365,7 +394,10 @@ $("wallets-list").addEventListener("click", async (e) => {
   }
 });
 
-$("show-add-wallet").addEventListener("click", () => ($("add-wallet-form").style.display = "flex"));
+$("show-add-wallet").addEventListener("click", () => {
+  $("import-wallet-form").style.display = "none";
+  $("add-wallet-form").style.display = "flex";
+});
 $("cancel-add-wallet").addEventListener("click", () => ($("add-wallet-form").style.display = "none"));
 
 $("submit-add-wallet").addEventListener("click", async () => {
@@ -383,6 +415,38 @@ $("submit-add-wallet").addEventListener("click", async () => {
     showToast(`Wallet "${wallet.label}" created: ${wallet.address}`);
   } catch (err) {
     showToast(err.message, "error");
+  }
+});
+
+$("show-import-wallet").addEventListener("click", () => {
+  $("add-wallet-form").style.display = "none";
+  $("import-wallet-form").style.display = "flex";
+});
+$("cancel-import-wallet").addEventListener("click", () => {
+  $("import-wallet-form").style.display = "none";
+  $("i-key").value = "";
+});
+
+$("submit-import-wallet").addEventListener("click", async () => {
+  const chain = $("i-chain").value;
+  const label = $("i-label").value.trim();
+  const key = $("i-key").value.trim();
+  if (!label || !key) {
+    showToast("Label and key are required", "error");
+    return;
+  }
+  try {
+    const wallet = await api("/wallets/import", { method: "POST", body: JSON.stringify({ chain, label, key }) });
+    showToast(`Wallet "${wallet.label}" imported: ${wallet.address}`);
+    loadWallets();
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    // Clear the key field either way — never leave it sitting in the DOM
+    // longer than the single submit action needs it.
+    $("i-key").value = "";
+    $("i-label").value = "";
+    $("import-wallet-form").style.display = "none";
   }
 });
 

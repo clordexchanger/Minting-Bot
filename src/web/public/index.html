@@ -67,9 +67,13 @@
   <section class="panel">
     <div class="panel-header">
       <h2>Wallets</h2>
-      <button id="show-add-wallet">+ New wallet</button>
+      <div style="display:flex; gap:8px;">
+        <button id="show-add-wallet">+ New wallet</button>
+        <button id="show-import-wallet" class="secondary">+ Import key</button>
+      </div>
     </div>
     <div id="add-wallet-form" class="form-card" style="display:none;">
+      <h3>Generate new</h3>
       <select id="w-chain">
         <option value="evm">EVM</option>
         <option value="solana">Solana</option>
@@ -80,6 +84,20 @@
         <button id="cancel-add-wallet" class="secondary">Cancel</button>
       </div>
       <p class="hint">Generates a brand-new wallet. Never asks for or shows a private key here.</p>
+    </div>
+    <div id="import-wallet-form" class="form-card" style="display:none;">
+      <h3>Import existing key</h3>
+      <select id="i-chain">
+        <option value="evm">EVM</option>
+        <option value="solana">Solana</option>
+      </select>
+      <input id="i-label" placeholder="Label (e.g. main)" />
+      <input id="i-key" type="password" placeholder="Private key (evm) or base58 secret key (solana)" autocomplete="new-password" />
+      <div class="form-actions">
+        <button id="submit-import-wallet">Import</button>
+        <button id="cancel-import-wallet" class="secondary">Cancel</button>
+      </div>
+      <p class="hint">Sent over HTTPS to this server only and encrypted into the keystore immediately — never logged, never stored elsewhere. The field clears itself right after submitting either way.</p>
     </div>
     <div id="wallets-list" class="card-list"></div>
   </section>

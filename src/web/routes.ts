@@ -2,9 +2,10 @@ import { Router } from "express";
 import type { Bot } from "grammy";
 import type { Address } from "viem";
 import { addTarget, getTarget, listTargets, removeTarget } from "../config/targets.js";
-import { listWallets, setSweepTo, removeWallet } from "../wallet/keystore.js";
+import { listWallets, setSweepTo, removeWallet, storeSecret } from "../wallet/keystore.js";
 import { generateEvmKeypair, generateSolanaKeypair } from "../wallet/generate.js";
-import { storeSecret } from "../wallet/keystore.js";
+import { evmAddressFromPrivateKey } from "../wallet/evm.js";
+import { solanaKeypairFromSecret, solanaSecretFromBase58 } from "../wallet/solana.js";
 import { getEvmBalance } from "../wallet/evm.js";
 import { getSolanaBalance } from "../wallet/solana.js";
 import { mintOnEvm, waitForEvmConfirmation, dryRunEvmMint } from "../evm/mintEngine.js";
@@ -118,6 +119,42 @@ export function buildApiRouter(bot: Bot): Router {
       storeSecret("solana", label, address, secretBytes);
       notifyTelegram(bot, `New solana wallet generated: ${label}`);
       res.json({ label, chain, address });
+    }
+  });
+
+  // Imports an existing key. Never log `key` itself in any branch here —
+  // this is the one route in the whole app that ever receives raw secret
+  // material, and it must never end up in a log line or error message.
+  router.post("/wallets/import", (req, res) => {
+    const { chain, label, key } = req.body ?? {};
+    if (!label || !key || (chain !== "evm" && chain !== "solana")) {
+      res.status(400).json({ error: 'chain must be "evm" or "solana", and label and key are required' });
+      return;
+    }
+    if (listWallets().some((w) => w.label === label)) {
+      res.status(409).json({ error: `A wallet labeled "${label}" already exists` });
+      return;
+    }
+    try {
+      if (chain === "evm") {
+        const address = evmAddressFromPrivateKey(key);
+        const keyTrimmed = String(key).trim();
+        const keyHex = keyTrimmed.startsWith("0x") ? keyTrimmed.slice(2) : keyTrimmed;
+        storeSecret("evm", label, address, Buffer.from(keyHex, "hex"));
+        notifyTelegram(bot, `Wallet imported via dashboard: ${label}`);
+        res.json({ label, chain, address });
+      } else {
+        const secretBytes = solanaSecretFromBase58(key);
+        const keypair = solanaKeypairFromSecret(secretBytes);
+        const address = keypair.publicKey.toBase58();
+        storeSecret("solana", label, address, secretBytes);
+        notifyTelegram(bot, `Wallet imported via dashboard: ${label}`);
+        res.json({ label, chain, address });
+      }
+    } catch {
+      // Deliberately generic — never echo the raw key or key-derived detail
+      // back in an error message.
+      res.status(400).json({ error: "Failed to import key — check the format and try again." });
     }
   });
 
